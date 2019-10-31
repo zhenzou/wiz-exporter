@@ -5,14 +5,16 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"path/filepath"
 
 	"github.com/jinzhu/gorm"
+	_ "github.com/jinzhu/gorm/dialects/sqlite"
 )
 
 const (
-	DefaultDbPath   = "data/index.db"
-	DefaultDataPath = "data/notes"
+	DefaultDbPath   = "/data/index.db"
+	DefaultDataPath = "/data/notes"
 
 	ContentFileName = "index.html"
 	ContentFilesDir = "index_files"
@@ -38,7 +40,9 @@ type Wiz struct {
 	notes string
 }
 
-type WalkFunc func(path string, doc Document, tags []string) error
+type WalkFunc func(doc Document) error
+
+type FilesFunc func(path string, reader io.Reader) error
 
 func (w *Wiz) Walk(f WalkFunc) error {
 	var docs []*Document
@@ -46,9 +50,7 @@ func (w *Wiz) Walk(f WalkFunc) error {
 		return err
 	}
 	for _, doc := range docs {
-		path := filepath.Join(w.notes, fmt.Sprintf("{%s}", doc.Guid))
-		tags := w.Tags(doc.Guid)
-		if err := f(path, *doc, tags); err != nil {
+		if err := f(*doc); err != nil {
 			return err
 		}
 	}
@@ -74,26 +76,29 @@ func (w *Wiz) Path(guid string) string {
 	return filepath.Join(w.notes, fmt.Sprintf("{%s}", guid))
 }
 
-func (w *Wiz) Content(guid string) (content []byte, err error) {
+func (w *Wiz) Content(guid string) (content string, err error) {
 	path := w.Path(guid)
 	reader, err := zip.OpenReader(path)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	defer reader.Close()
 	for _, file := range reader.File {
-		if (*file).Name == ContentFileName {
+		if file.Name == ContentFileName {
 			fd, _ := file.Open()
-			buff := make([]byte, file.UncompressedSize64)
-			_, err = fd.Read(buff)
+
+			buff, err := ioutil.ReadAll(fd)
+			if err != nil {
+				return "", err
+			}
 			fd.Close()
-			return buff, err
+			return string(buff), err
 		}
 	}
-	return nil, errors.New("not found")
+	return "", errors.New("not found")
 }
 
-func (w *Wiz) Files(guid string, f func(string, io.Reader) error) (err error) {
+func (w *Wiz) Files(guid string, f FilesFunc) (err error) {
 	path := w.Path(guid)
 	reader, err := zip.OpenReader(path)
 	if err != nil {
