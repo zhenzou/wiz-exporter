@@ -13,29 +13,33 @@ import (
 )
 
 const (
-	DefaultDbPath   = "/data/index.db"
-	DefaultDataPath = "/data/notes"
+	DefaultDbPath    = "/data/index.db"
+	DefaultNotesPath = "/data/notes"
 
 	ContentFileName = "index.html"
 	ContentFilesDir = "index_files"
 )
 
-func New(root string) (*Wiz, error) {
-	db, err := gorm.Open("sqlite3", filepath.Join(root, DefaultDbPath))
+func New(opts ...Option) (*Wiz, error) {
+	opt := &option{}
+
+	for _, o := range opts {
+		o(opt)
+	}
+
+	db, err := gorm.Open("sqlite3", opt.DbPath)
 	if err != nil {
 		return nil, err
 	}
 
 	wiz := Wiz{
-		root:  root,
 		db:    db,
-		notes: filepath.Join(root, DefaultDataPath),
+		notes: opt.NotesPath,
 	}
 	return &wiz, nil
 }
 
 type Wiz struct {
-	root  string
 	db    *gorm.DB
 	notes string
 }

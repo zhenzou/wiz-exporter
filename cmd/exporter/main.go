@@ -65,7 +65,7 @@ func main() {
 	}
 	var err error
 
-	w, err = wiz.New(in)
+	w, err = wiz.New(wiz.RootPath(in))
 	if err != nil {
 		println(err.Error())
 		os.Exit(-1)
