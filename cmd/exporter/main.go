@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/lunny/html2md"
+
 	"github.com/zhenzou/wiz"
 )
 
@@ -28,7 +29,7 @@ func mkdirs(path string) error {
 	return os.MkdirAll(path, os.ModePerm)
 }
 
-func markdown(doc wiz.Document) (string, string, error) {
+func toMarkdown(doc wiz.Document) (string, string, error) {
 	content, err := w.Content(doc.Guid)
 	if err != nil {
 		return "", content, err
@@ -40,19 +41,12 @@ func markdown(doc wiz.Document) (string, string, error) {
 	return doc.Title + ".md", html2md.Convert(content), nil
 }
 
-func writeFile(path string, content [] byte) error {
+func writeFile(path string, content []byte) error {
 	base := filepath.Dir(path)
 	err := mkdirs(base)
 	if err != nil {
 		return err
 	}
-
-	file, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, os.ModePerm)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
 	return ioutil.WriteFile(path, content, os.ModePerm)
 }
 
@@ -73,7 +67,7 @@ func main() {
 	err = w.Walk(func(doc wiz.Document) error {
 		println(fmt.Sprintf("exporting %s%s", doc.Location, doc.Title))
 
-		name, md, err := markdown(doc)
+		name, md, err := toMarkdown(doc)
 		if err != nil {
 			return err
 		}

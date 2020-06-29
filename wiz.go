@@ -21,7 +21,7 @@ const (
 )
 
 func New(opts ...Option) (*Wiz, error) {
-	opt := &option{}
+	opt := &options{}
 
 	for _, o := range opts {
 		o(opt)
