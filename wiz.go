@@ -8,8 +8,8 @@ import (
 	"io/ioutil"
 	"path/filepath"
 
-	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/sqlite"
+	"github.com/jmoiron/sqlx"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 const (
@@ -20,6 +20,12 @@ const (
 	ContentFilesDir = "index_files"
 )
 
+var (
+	baseDocumentSQL    string = extractBaseQuerySQL(Document{}, DocumentTableName)
+	baseTagSQL         string = extractBaseQuerySQL(Tag{}, TagTableName)
+	baseDocumentTagSQL string = extractBaseQuerySQL(DocumentTag{}, DocumentTagTableName)
+)
+
 func New(opts ...Option) (*Wiz, error) {
 	opt := &options{}
 
@@ -27,7 +33,7 @@ func New(opts ...Option) (*Wiz, error) {
 		o(opt)
 	}
 
-	db, err := gorm.Open("sqlite3", opt.DbPath)
+	db, err := sqlx.Open("sqlite3", opt.DbPath)
 	if err != nil {
 		return nil, err
 	}
@@ -40,7 +46,7 @@ func New(opts ...Option) (*Wiz, error) {
 }
 
 type Wiz struct {
-	db    *gorm.DB
+	db    *sqlx.DB
 	notes string
 }
 
@@ -50,7 +56,8 @@ type FilesFunc func(path string, reader io.Reader) error
 
 func (w *Wiz) Walk(f WalkFunc) error {
 	var docs []*Document
-	if err := w.db.Model(&Document{}).Find(&docs).Error; err != nil {
+	err := w.db.Select(&docs, baseDocumentSQL)
+	if err != nil {
 		return err
 	}
 	for _, doc := range docs {
@@ -63,12 +70,16 @@ func (w *Wiz) Walk(f WalkFunc) error {
 
 func (w *Wiz) Tags(guid string) []string {
 	var relations []*DocumentTag
-	_ = w.db.Model(&DocumentTag{}).Where(DocumentTag{DocumentGuid: guid}).Find(&relations)
+	err := w.db.Select(&relations, baseDocumentSQL+"WHERE DOCUMENT_GUID = ?", guid)
+	if err != nil {
+		return []string{}
+	}
 	tags := make([]string, 0, len(relations))
 	if len(relations) > 0 {
 		tag := &Tag{}
 		for _, dt := range relations {
-			if err := w.db.Where(Tag{Guid: dt.TagGuid}).Find(tag).Error; err != nil {
+			if err := w.db.Select(tag, baseTagSQL+"WHERE TAG_GUID = ?", dt.TagGuid); err == nil {
+
 				tags = append(tags, tag.Name)
 			}
 		}

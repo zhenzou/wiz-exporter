@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -67,26 +66,29 @@ func main() {
 	err = w.Walk(func(doc wiz.Document) error {
 		println(fmt.Sprintf("exporting %s%s", doc.Location, doc.Title))
 
-		name, md, err := toMarkdown(doc)
+		name, _, err := toMarkdown(doc)
 		if err != nil {
 			return err
 		}
 		dir := filepath.Join(out, doc.Location)
 		path := filepath.Join(dir, name)
 
-		err = writeFile(path, []byte(md))
-		if err != nil {
-			return err
-		}
+		println("path:", path)
 
-		return w.Files(doc.Guid, func(path string, reader io.Reader) error {
-			path = filepath.Join(dir, path)
-			content, err := ioutil.ReadAll(reader)
-			if err != nil {
-				return err
-			}
-			return writeFile(path, content)
-		})
+		return nil
+		// err = writeFile(path, []byte(md))
+		// if err != nil {
+		// 	return err
+		// }
+		//
+		// return w.Files(doc.Guid, func(path string, reader io.Reader) error {
+		// 	path = filepath.Join(dir, path)
+		// 	content, err := ioutil.ReadAll(reader)
+		// 	if err != nil {
+		// 		return err
+		// 	}
+		// 	return writeFile(path, content)
+		// })
 	})
 
 	if err != nil {
