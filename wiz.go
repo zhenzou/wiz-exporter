@@ -8,8 +8,8 @@ import (
 	"io/ioutil"
 	"path/filepath"
 
-	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/sqlite"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
 
 const (
@@ -27,7 +27,7 @@ func New(opts ...Option) (*Wiz, error) {
 		o(opt)
 	}
 
-	db, err := gorm.Open("sqlite3", opt.DbPath)
+	db, err := gorm.Open(sqlite.Open(fmt.Sprintf("file://%s", opt.DbPath)), &gorm.Config{})
 	if err != nil {
 		return nil, err
 	}

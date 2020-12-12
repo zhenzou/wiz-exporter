@@ -1,9 +1,17 @@
 package wiz
 
+import (
+	"time"
+)
+
 const (
 	DocumentTableName    = "wiz_document"
 	TagTableName         = "wiz_tag"
 	DocumentTagTableName = "wiz_document_tag"
+)
+
+const (
+	tsFormat = "2006-01-02 15:04:05"
 )
 
 type Document struct {
@@ -35,8 +43,32 @@ type Document struct {
 	InfoChanged     int    `json:"info_changed" gorm:"column:INFO_CHANGED"`
 	DataChanged     int    `json:"data_changed" gorm:"column:DATA_CHANGED"`
 	DTCreated       string `json:"dt_created" gorm:"column:DT_CREATED"`
-	DTModified      string `json:"dt_mofified" gorm:"column:DT_MODIFIED"`
+	DTModified      string `json:"dt_modified" gorm:"column:DT_MODIFIED"`
 	DTAccessed      string `json:"dt_accessed" gorm:"column:DT_ACCESSED"`
+}
+
+func (d *Document) CreatedAt() time.Time {
+	ts, err := time.Parse(tsFormat, d.DTCreated)
+	if err != nil {
+		panic(err)
+	}
+	return ts
+}
+
+func (d *Document) UpdatedAt() time.Time {
+	ts, err := time.Parse(tsFormat, d.DTModified)
+	if err != nil {
+		panic(err)
+	}
+	return ts
+}
+
+func (d *Document) AccessedAt() time.Time {
+	ts, err := time.Parse(tsFormat, d.DTAccessed)
+	if err != nil {
+		panic(err)
+	}
+	return ts
 }
 
 func (d *Document) TableName() string {

@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/lunny/html2md"
+
 	"github.com/zhenzou/wiz"
 )
 
@@ -40,7 +41,7 @@ func markdown(doc wiz.Document) (string, string, error) {
 	return doc.Title + ".md", html2md.Convert(content), nil
 }
 
-func writeFile(path string, content [] byte) error {
+func writeFile(path string, content []byte) error {
 	base := filepath.Dir(path)
 	err := mkdirs(base)
 	if err != nil {
@@ -52,7 +53,6 @@ func writeFile(path string, content [] byte) error {
 		return err
 	}
 	defer file.Close()
-
 	return ioutil.WriteFile(path, content, os.ModePerm)
 }
 
@@ -60,7 +60,7 @@ func main() {
 
 	flag.Parse()
 	if in == "" || out == "" {
-		println("in and out directory must not be empty!")
+		println("input and output directory must not be empty!")
 		os.Exit(-1)
 	}
 	var err error
@@ -84,7 +84,10 @@ func main() {
 		if err != nil {
 			return err
 		}
-
+		err = os.Chtimes(path, doc.CreatedAt(), doc.CreatedAt())
+		if err != nil {
+			return err
+		}
 		return w.Files(doc.Guid, func(path string, reader io.Reader) error {
 			path = filepath.Join(dir, path)
 			content, err := ioutil.ReadAll(reader)
