@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"io"
@@ -9,7 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/lunny/html2md"
+	"github.com/mattn/godown"
 
 	"github.com/zhenzou/wiz"
 )
@@ -38,7 +39,12 @@ func markdown(doc wiz.Document) (string, string, error) {
 	if strings.HasSuffix(doc.Title, ".md") {
 		return doc.Title, content, nil
 	}
-	return doc.Title + ".md", html2md.Convert(content), nil
+	buf := bytes.Buffer{}
+	err = godown.Convert(&buf, strings.NewReader(content), nil)
+	if err != nil {
+		return "", "", err
+	}
+	return doc.Title + ".md", buf.String(), nil
 }
 
 func writeFile(path string, content []byte) error {
