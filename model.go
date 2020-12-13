@@ -1,20 +1,12 @@
 package wiz
 
-import (
-	"time"
-)
-
 const (
 	DocumentTableName    = "wiz_document"
 	TagTableName         = "wiz_tag"
 	DocumentTagTableName = "wiz_document_tag"
 )
 
-const (
-	tsFormat = "2006-01-02 15:04:05"
-)
-
-type Document struct {
+type documentEntity struct {
 	Guid            string `json:"guid" gorm:"column:DOCUMENT_GUID"`
 	Title           string `json:"title" gorm:"column:DOCUMENT_TITLE"`
 	Location        string `json:"location" gorm:"column:DOCUMENT_LOCATION"`
@@ -47,35 +39,11 @@ type Document struct {
 	DTAccessed      string `json:"dt_accessed" gorm:"column:DT_ACCESSED"`
 }
 
-func (d *Document) CreatedAt() time.Time {
-	ts, err := time.Parse(tsFormat, d.DTCreated)
-	if err != nil {
-		panic(err)
-	}
-	return ts
-}
-
-func (d *Document) UpdatedAt() time.Time {
-	ts, err := time.Parse(tsFormat, d.DTModified)
-	if err != nil {
-		panic(err)
-	}
-	return ts
-}
-
-func (d *Document) AccessedAt() time.Time {
-	ts, err := time.Parse(tsFormat, d.DTAccessed)
-	if err != nil {
-		panic(err)
-	}
-	return ts
-}
-
-func (d *Document) TableName() string {
+func (d *documentEntity) TableName() string {
 	return DocumentTableName
 }
 
-type Tag struct {
+type tagEntity struct {
 	Guid        string `json:"guid" gorm:"column:TAG_GUID"`
 	GroupGuid   string `json:"group_guid" gorm:"column:TAG_GROUP_GUID"`
 	Name        string `json:"name" gorm:"column:TAG_NAME"`
@@ -85,15 +53,15 @@ type Tag struct {
 	WizVersion  int64  `json:"wiz_version" gorm:"column:WIZ_VERSION"`
 }
 
-func (t *Tag) TableName() string {
+func (t *tagEntity) TableName() string {
 	return TagTableName
 }
 
-type DocumentTag struct {
+type documentTagEntity struct {
 	DocumentGuid string `json:"document_guid" gorm:"column:document_guid"`
 	TagGuid      string `json:"tag_guid" gorm:"column:tag_guid"`
 }
 
-func (t *DocumentTag) TableName() string {
+func (t *documentTagEntity) TableName() string {
 	return DocumentTagTableName
 }

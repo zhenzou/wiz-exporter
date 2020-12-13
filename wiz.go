@@ -2,12 +2,16 @@ package wiz
 
 import (
 	"archive/zip"
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"path/filepath"
+	"strings"
+	"time"
 
+	"github.com/mattn/godown"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -20,8 +24,12 @@ const (
 	ContentFilesDir = "index_files"
 )
 
+const (
+	tsFormat = "2006-01-02 15:04:05"
+)
+
 func New(opts ...Option) (*Wiz, error) {
-	opt := &option{}
+	opt := &options{}
 
 	for _, o := range opts {
 		o(opt)
@@ -49,26 +57,58 @@ type WalkFunc func(doc Document) error
 type FilesFunc func(path string, reader io.Reader) error
 
 func (w *Wiz) Walk(f WalkFunc) error {
-	var docs []*Document
-	if err := w.db.Model(&Document{}).Find(&docs).Error; err != nil {
+	var docs []*documentEntity
+	if err := w.db.Model(&documentEntity{}).Find(&docs).Error; err != nil {
 		return err
 	}
 	for _, doc := range docs {
-		if err := f(*doc); err != nil {
+		if err := f(Document{
+			documentEntity: *doc,
+			wiz:            w,
+		}); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (w *Wiz) Tags(guid string) []string {
-	var relations []*DocumentTag
-	_ = w.db.Model(&DocumentTag{}).Where(DocumentTag{DocumentGuid: guid}).Find(&relations)
+type Document struct {
+	documentEntity
+	wiz *Wiz
+}
+
+func (d Document) CreatedAt() time.Time {
+	ts, err := time.Parse(tsFormat, d.DTCreated)
+	if err != nil {
+		panic(err)
+	}
+	return ts
+}
+
+func (d Document) UpdatedAt() time.Time {
+	ts, err := time.Parse(tsFormat, d.DTModified)
+	if err != nil {
+		panic(err)
+	}
+	return ts
+}
+
+func (d Document) AccessedAt() time.Time {
+	ts, err := time.Parse(tsFormat, d.DTAccessed)
+	if err != nil {
+		panic(err)
+	}
+	return ts
+}
+
+func (d *Document) Tags() []string {
+	var relations []*documentTagEntity
+	_ = d.wiz.db.Model(&documentTagEntity{}).Where(documentTagEntity{DocumentGuid: d.Guid}).Find(&relations)
 	tags := make([]string, 0, len(relations))
 	if len(relations) > 0 {
-		tag := &Tag{}
+		tag := &tagEntity{}
 		for _, dt := range relations {
-			if err := w.db.Where(Tag{Guid: dt.TagGuid}).Find(tag).Error; err != nil {
+			if err := d.wiz.db.Where(tagEntity{Guid: dt.TagGuid}).Find(tag).Error; err != nil {
 				tags = append(tags, tag.Name)
 			}
 		}
@@ -76,12 +116,29 @@ func (w *Wiz) Tags(guid string) []string {
 	return tags
 }
 
-func (w *Wiz) Path(guid string) string {
-	return filepath.Join(w.notes, fmt.Sprintf("{%s}", guid))
+func (d *Document) Path() string {
+	return filepath.Join(d.wiz.notes, fmt.Sprintf("{%s}", d.Guid))
 }
 
-func (w *Wiz) Content(guid string) (content string, err error) {
-	path := w.Path(guid)
+func (d *Document) Markdown() (string, error) {
+	content, err := d.Raw()
+	if err != nil {
+		return "", err
+	}
+
+	if strings.HasSuffix(d.Title, ".md") {
+		return content, nil
+	}
+	buf := bytes.Buffer{}
+	err = godown.Convert(&buf, strings.NewReader(content), nil)
+	if err != nil {
+		return "", err
+	}
+	return buf.String(), nil
+}
+
+func (d *Document) Raw() (content string, err error) {
+	path := d.Path()
 	reader, err := zip.OpenReader(path)
 	if err != nil {
 		return "", err
@@ -102,8 +159,8 @@ func (w *Wiz) Content(guid string) (content string, err error) {
 	return "", errors.New("not found")
 }
 
-func (w *Wiz) Files(guid string, f FilesFunc) (err error) {
-	path := w.Path(guid)
+func (d *Document) Files(f FilesFunc) (err error) {
+	path := d.Path()
 	reader, err := zip.OpenReader(path)
 	if err != nil {
 		return err

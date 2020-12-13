@@ -1,16 +1,12 @@
 package main
 
 import (
-	"bytes"
 	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
-
-	"github.com/mattn/godown"
 
 	"github.com/zhenzou/wiz"
 )
@@ -31,20 +27,11 @@ func mkdirs(path string) error {
 }
 
 func markdown(doc wiz.Document) (string, string, error) {
-	content, err := w.Content(doc.Guid)
-	if err != nil {
-		return "", content, err
-	}
-
-	if strings.HasSuffix(doc.Title, ".md") {
-		return doc.Title, content, nil
-	}
-	buf := bytes.Buffer{}
-	err = godown.Convert(&buf, strings.NewReader(content), nil)
+	content, err := doc.Markdown()
 	if err != nil {
 		return "", "", err
 	}
-	return doc.Title + ".md", buf.String(), nil
+	return doc.Title + ".md", content, nil
 }
 
 func writeFile(path string, content []byte) error {
@@ -94,7 +81,7 @@ func main() {
 		if err != nil {
 			return err
 		}
-		return w.Files(doc.Guid, func(path string, reader io.Reader) error {
+		return doc.Files(func(path string, reader io.Reader) error {
 			path = filepath.Join(dir, path)
 			content, err := ioutil.ReadAll(reader)
 			if err != nil {
